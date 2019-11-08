@@ -8,39 +8,43 @@ use std::str::FromStr;
 use std::sync::mpsc::{Sender, channel};
 use std::thread;
 
+// nagiosplugin
 extern crate nagiosplugin;
 use nagiosplugin::{Resource, State};
-use std::env::args;
+//use std::env::args;
 
 // Max possible port
 const MAX: u16 = 65535;
 
+
+// scan scans ports at an IP address and sends any open ports it finds back on its
+// channel.  scan exits once MAX has been reached.
+
+fn scan(tx: Sender<u16>, start_port: u16, addr: IpAddr, num_threads: u16) {
+    let mut port: u16 = start_port + 1;
+
+    loop {
+        match TcpStream::connect((addr, port)) {
+            Ok(_) => {
+                // Found open port, indicate progress and send to main thread
+                print!(".");
+                io::stdout().flush().unwrap();
+                tx.send(port).unwrap();
+            }
+            Err(_) => {}
+        }
+
+        // Break loop when out of ports
+        if (MAX - port) <= num_threads {
+            break;
+        }
+
+        port += num_threads;
+    }
+}
+
+
 fn main() {
-    // Grab the first argument
-    let arg = args().nth(1).expect("provide an argument");
-
-    // Create a default resource: state is unknown, description is empty
-    let mut resource = Resource::new(None, None);
-
-    // Check logic goes here
-    match arg.as_ref() {
-        "itsfine" => {
-            resource.set_state(State::Ok);
-            resource.set_description("Eveything is fine :-)");
-        }
-        "haaa" => {
-            resource.set_state(State::Critical);
-            resource.set_description("Something went terribly wrong!");
-        }
-        _ => (), // unexpected argument: the state will remain unknown
-    };
-
-    // print the status based on `state` and `description`
-    // then exists with appropriate exit code
-    resource.print_and_exit();
-
-
-
 
     let args: Vec<String> = env::args().collect();
     let program = args[0].clone();
@@ -102,29 +106,51 @@ fn main() {
     for v in out {
         println!("{} is open", v);
     }
+
+    let mut resource = Resource::new(None, None);
+
+    // Check logic goes here
+    // match arg.as_ref() {
+    match "itsfine" {
+        "itsfine" => {
+            resource.set_state(State::Ok);
+            resource.set_description("Eveything is fine :-)");
+        }
+        "haaa" => {
+            resource.set_state(State::Critical);
+            resource.set_description("Something went terribly wrong!");
+        }
+        _ => (), // unexpected argument: the state will remain unknown
+    };
+
+    // print the status based on `state` and `description`
+    // then exists with appropriate exit code
+    resource.print_and_exit();
+
+
+//    // nagiosplugin
+//    // Grab the first argument
+//    let arg = args().nth(1).expect("provide an argument");
+//
+//    // Create a default resource: state is unknown, description is empty
+//    let mut resource = Resource::new(None, None);
+//
+//    // Check logic goes here
+//    match arg.as_ref() {
+//        "itsfine" => {
+//            resource.set_state(State::Ok);
+//            resource.set_description("Eveything is fine :-)");
+//        }
+//        "haaa" => {
+//            resource.set_state(State::Critical);
+//            resource.set_description("Something went terribly wrong!");
+//        }
+//        _ => (), // unexpected argument: the state will remain unknown
+//    };
+//
+//    // print the status based on `state` and `description`
+//    // then exists with appropriate exit code
+//    resource.print_and_exit();
+
 }
 
-// scan scans ports at an IP address and sends any open ports it finds back on its
-// channel.  scan exits once MAX has been reached.
-fn scan(tx: Sender<u16>, start_port: u16, addr: IpAddr, num_threads: u16) {
-    let mut port: u16 = start_port + 1;
-
-    loop {
-        match TcpStream::connect((addr, port)) {
-            Ok(_) => {
-                // Found open port, indicate progress and send to main thread
-                print!(".");
-                io::stdout().flush().unwrap();
-                tx.send(port).unwrap();
-            }
-            Err(_) => {}
-        }
-
-        // Break loop when out of ports
-        if (MAX - port) <= num_threads {
-            break;
-        }
-
-        port += num_threads;
-    }
-}
