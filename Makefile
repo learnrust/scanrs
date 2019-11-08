@@ -39,12 +39,11 @@ clean: cleantmp
 	-rm -f  MANIFEST
 	-rm -rf dist/ build/
 	-rm -rf *~
-	-rm -rf rpm-build/
-	-rm -rf deb-build/
 	-rm -rf docs/*.1
 	-rm -f etc/version
 	-find . -type f -name *.pyc -exec rm -f {} \;
 	-find . -type f -name *~  -exec rm -f {} \;
+	-cargo clean
 
 clean_hard:
 	-rm -rf $(shell $(PYTHON) -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")/adagios 
